@@ -3,8 +3,8 @@
   --bg-deep: #04000d;
   --purple: #6a00b8;
   --purple-bright: #b026ff;
-  --magenta: #ff1ec8;
-  --pink: #ff5fb3;
+  --magenta: #1ea8ff;
+  --pink: #5fc8ff;
   --green: #6cf04a;
   --green-bright: #b6ff3c;
   --orange: #ff6a00;
@@ -41,7 +41,7 @@ a { color: inherit; text-decoration: none; }
   min-height: 100vh;
   background:
     radial-gradient(ellipse at 20% 10%, rgba(176, 38, 255, 0.25), transparent 55%),
-    radial-gradient(ellipse at 80% 30%, rgba(255, 30, 200, 0.22), transparent 55%),
+    radial-gradient(ellipse at 80% 30%, rgba(30, 168, 255, 0.22), transparent 55%),
     radial-gradient(ellipse at 50% 90%, rgba(108, 240, 74, 0.15), transparent 60%),
     linear-gradient(180deg, #04000d 0%, #0a001f 40%, #160033 100%);
 }
@@ -58,7 +58,7 @@ a { color: inherit; text-decoration: none; }
     radial-gradient(1px 1px at 85% 80%, #5af0ff 50%, transparent 100%),
     radial-gradient(1px 1px at 10% 90%, #fff 50%, transparent 100%),
     radial-gradient(1.5px 1.5px at 60% 50%, #b6ff3c 50%, transparent 100%),
-    radial-gradient(1px 1px at 35% 15%, #ff5fb3 50%, transparent 100%),
+    radial-gradient(1px 1px at 35% 15%, #5fc8ff 50%, transparent 100%),
     radial-gradient(2px 2px at 90% 45%, #fff 50%, transparent 100%);
   background-size: 600px 600px;
   background-repeat: repeat;
@@ -187,7 +187,7 @@ a { color: inherit; text-decoration: none; }
   font-family: var(--font-bungee);
   font-size: clamp(18px, 2vw, 26px);
   color: var(--magenta);
-  text-shadow: 0 0 18px rgba(255, 30, 200, 0.6);
+  text-shadow: 0 0 18px rgba(30, 168, 255, 0.6);
   margin: 0 0 18px;
   letter-spacing: 0.04em;
 }
@@ -227,7 +227,7 @@ a { color: inherit; text-decoration: none; }
   color: #fff;
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.1) inset,
-    0 0 24px rgba(255, 30, 200, 0.5),
+    0 0 24px rgba(30, 168, 255, 0.5),
     0 8px 24px rgba(176, 38, 255, 0.35);
 }
 
@@ -235,7 +235,7 @@ a { color: inherit; text-decoration: none; }
   transform: translateY(-2px) rotate(-1deg);
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.2) inset,
-    0 0 40px rgba(255, 30, 200, 0.8),
+    0 0 40px rgba(30, 168, 255, 0.8),
     0 12px 32px rgba(176, 38, 255, 0.5);
 }
 
@@ -285,9 +285,9 @@ a { color: inherit; text-decoration: none; }
   border-radius: 18px;
   overflow: hidden;
   box-shadow:
-    0 0 0 2px rgba(255, 30, 200, 0.4),
+    0 0 0 2px rgba(30, 168, 255, 0.4),
     0 0 60px rgba(176, 38, 255, 0.55),
-    0 0 120px rgba(255, 30, 200, 0.3),
+    0 0 120px rgba(30, 168, 255, 0.3),
     0 24px 80px rgba(0, 0, 0, 0.6);
   transform: rotate(-1.5deg);
   transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -326,7 +326,7 @@ a { color: inherit; text-decoration: none; }
   align-items: baseline;
   gap: 18px;
   margin-bottom: 36px;
-  border-bottom: 1px solid rgba(255, 30, 200, 0.25);
+  border-bottom: 1px solid rgba(30, 168, 255, 0.25);
   padding-bottom: 18px;
 }
 
@@ -364,7 +364,7 @@ a { color: inherit; text-decoration: none; }
   line-height: 0.8;
   padding: 6px 12px 0 0;
   color: var(--magenta);
-  text-shadow: 0 0 18px rgba(255, 30, 200, 0.6);
+  text-shadow: 0 0 18px rgba(30, 168, 255, 0.6);
 }
 
 /* Cards */
@@ -379,7 +379,7 @@ a { color: inherit; text-decoration: none; }
   padding: 28px;
   border-radius: 16px;
   background:
-    linear-gradient(135deg, rgba(176, 38, 255, 0.12) 0%, rgba(255, 30, 200, 0.06) 100%);
+    linear-gradient(135deg, rgba(176, 38, 255, 0.12) 0%, rgba(30, 168, 255, 0.06) 100%);
   border: 1.5px solid rgba(176, 38, 255, 0.35);
   transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
   position: relative;
@@ -389,7 +389,7 @@ a { color: inherit; text-decoration: none; }
 .card:hover {
   transform: translateY(-4px);
   border-color: var(--magenta);
-  box-shadow: 0 12px 40px rgba(255, 30, 200, 0.35);
+  box-shadow: 0 12px 40px rgba(30, 168, 255, 0.35);
 }
 
 .card-icon {
@@ -467,7 +467,7 @@ a { color: inherit; text-decoration: none; }
 .footer {
   position: relative;
   z-index: 5;
-  border-top: 1px solid rgba(255, 30, 200, 0.25);
+  border-top: 1px solid rgba(30, 168, 255, 0.25);
   padding: 40px 6vw 32px;
   max-width: 1400px;
   margin: 40px auto 0;
@@ -486,7 +486,7 @@ a { color: inherit; text-decoration: none; }
   font-family: var(--font-bungee);
   color: var(--magenta);
   letter-spacing: 0.1em;
-  text-shadow: 0 0 12px rgba(255, 30, 200, 0.5);
+  text-shadow: 0 0 12px rgba(30, 168, 255, 0.5);
 }
 
 .footer-tag {
