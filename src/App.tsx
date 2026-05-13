@@ -7,6 +7,8 @@ const SCHEDULE = 'https://www.themusicgalaxyradio.com/schedule#dataItem-l65jhzsa
 function App() {
   return (
     <div className="cosmos">
+      <div className="bg-poster" aria-hidden="true" style={{ backgroundImage: `url(${heroImg})` }} />
+      <div className="bg-veil" aria-hidden="true" />
       <div className="starfield" aria-hidden="true" />
       <div className="aurora" aria-hidden="true" />
 
@@ -26,7 +28,6 @@ function App() {
       <section className="hero">
         <div className="hero-grid">
           <div className="hero-copy">
-            <p className="eyebrow">★ Westbound Records · WB 2001 · Stereo ★</p>
             <h1 className="title">
               <span className="title-top">DJ</span>
               <span className="title-drip">NEFKE</span>

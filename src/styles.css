@@ -46,6 +46,29 @@ a { color: inherit; text-decoration: none; }
     linear-gradient(180deg, #04000d 0%, #0a001f 40%, #160033 100%);
 }
 
+.bg-poster {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  opacity: 0.55;
+  filter: saturate(1.2) contrast(1.05);
+}
+
+.bg-veil {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse at 50% 35%, rgba(4, 0, 13, 0.15) 0%, rgba(4, 0, 13, 0.6) 70%, rgba(4, 0, 13, 0.92) 100%),
+    linear-gradient(180deg, rgba(4, 0, 13, 0.35) 0%, rgba(4, 0, 13, 0.65) 60%, rgba(4, 0, 13, 0.88) 100%);
+}
+
 .starfield {
   position: fixed;
   inset: 0;
