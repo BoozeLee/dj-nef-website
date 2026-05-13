@@ -1,4 +1,5 @@
 import heroImg from '/dj-nefke-hero.png'
+import { NefkeChat } from './NefkeChat'
 
 const MIXCLOUD = 'https://www.mixcloud.com/nefke-van-lishout/'
 const RADIO = 'https://www.themusicgalaxyradio.com/'
@@ -165,6 +166,8 @@ function App() {
         </div>
         <p className="copyright">© {new Date().getFullYear()} DJ NEFKE · Funk is the cosmic connection</p>
       </footer>
+
+      <NefkeChat />
     </div>
   )
 }
