@@ -141,8 +141,8 @@ function App() {
           cosmic gathering? Send a transmission.
         </p>
         <div className="booking-actions">
-          <a className="btn btn-primary" href="mailto:bookings@djnefke.cosmic?subject=DJ%20NEFKE%20Booking%20Inquiry">
-            ✉ bookings@djnefke
+          <a className="btn btn-primary" href="mailto:kiliaanv2@gmail.com?subject=DJ%20NEFKE%20Booking%20Inquiry">
+            ✉ kiliaanv2@gmail.com
           </a>
           <a className="btn btn-ghost" href={MIXCLOUD} target="_blank" rel="noreferrer">
             DM via Mixcloud
