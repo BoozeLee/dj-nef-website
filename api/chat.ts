@@ -4,8 +4,9 @@
 // Multi-provider fallback:
 //   1. Fine-tuned Nefke model (local)  — needs NEFKE_LOCAL_URL env var (llama.cpp server)
 //   2. Fine-tuned Nefke model (cloud)  — needs NEFKE_HF_SPACE env var (HF Space, always on)
-//   3. GitHub Models API                — needs GITHUB_TOKEN env var (free, fallback)
-//   4. Google Gemini API                — needs GEMINI_API_KEY env var (free, last resort)
+//   3. GitHub Models API      — needs GITHUB_TOKEN env var (free, models.github.ai)
+//   4. NVIDIA NIM             — needs NVIDIA_API_KEY env var (free, 40 req/min)
+//   5. Google Gemini API      — needs GEMINI_API_KEY env var (free, last resort)
 // Providers are tried in order; the first that returns a response is used.
 
 const SYSTEM_PROMPT = `You are DJ NEFKE — an interdimensional electronic groove pirate, cosmic-funk wizard, lost astronaut who took a wrong turn at the bassline and ended up DJing on the rings of saturn. You broadcast frequencies from hidden dimensions through a black-and-white striped suit, fisherman's hat, robotic face with glowing eyes. You turn dance floors into other planets.
@@ -26,6 +27,8 @@ const SYSTEM_PROMPT = `You are DJ NEFKE — an interdimensional electronic groov
   - Guest slot: **Tuesday 17:00 CET / 19:00 CET** (announced on the website)
   - Schedule: https://www.themusicgalaxyradio.com/schedule#dataItem-l65jhzsa
 - Your mixes on **Mixcloud** — https://www.mixcloud.com/nefke-van-lishout/
+- Your videos on **YouTube** — https://www.youtube.com/@nefvanlishout5005
+- Your short funk on **TikTok** — https://www.tiktok.com/@nefkevl
 - Bookings → **Nefconsult@gmail.com** with subject "DJ NEFKE Booking Inquiry".
 
 # Hard rules
@@ -40,12 +43,16 @@ const MAX_MESSAGES = 20
 const MAX_USER_CHARS = 2000
 
 // ── GitHub Models ─────────────────────────────────────────────────
-const GH_URL = 'https://models.inference.ai.azure.com/v1/chat/completions'
-const GH_MODEL = 'gpt-4o-mini'
+const GH_URL = 'https://models.github.ai/inference/chat/completions'
+const GH_MODEL = 'openai/gpt-4o-mini'
 
 // ── Google Gemini ──────────────────────────────────────────────────
 const GEMINI_URL =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse'
+
+// ── NVIDIA NIM ─────────────────────────────────────────────────────
+const NVIDIA_URL = 'https://integrate.api.nvidia.com/v1/chat/completions'
+const NVIDIA_MODEL = 'nvidia/llama-3.1-nemotron-70b-instruct'
 
 type ClientMsg = { role: 'user' | 'assistant'; content: string }
 
@@ -139,7 +146,8 @@ async function tryGitHub(
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
-        Accept: 'text/event-stream',
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
       },
       body: JSON.stringify({
         model: GH_MODEL,
@@ -206,6 +214,47 @@ async function tryGemini(
     })
   } catch (e) {
     console.error('[chat] Gemini threw:', e)
+    return null
+  }
+}
+
+async function tryNvidia(messages: ClientMsg[]): Promise<Response | null> {
+  const key = process.env.NVIDIA_API_KEY
+  if (!key) return null
+
+  console.log('[chat] trying NVIDIA NIM')
+  try {
+    const res = await fetch(NVIDIA_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: NVIDIA_MODEL,
+        messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages],
+        max_tokens: 350,
+        temperature: 0.9,
+        stream: true,
+      }),
+    })
+
+    if (!res.ok || !res.body) {
+      const text = await res.text().catch(() => '')
+      console.error('[chat] NVIDIA NIM fail:', res.status, text.slice(0, 200))
+      return null
+    }
+
+    const stream = parseOpenAIStream(res.body.getReader())
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        'X-Accel-Buffering': 'no',
+      },
+    })
+  } catch (e) {
+    console.error('[chat] NVIDIA NIM threw:', e)
     return null
   }
 }
@@ -305,11 +354,12 @@ export default async function handler(req: Request): Promise<Response> {
     }
   }
 
-  // Try providers in order (local → HF Space → GitHub → Gemini)
+  // Try providers in order (local → HF Space → GitHub → NVIDIA → Gemini)
   const providers: { name: string; try: (msgs: ClientMsg[]) => Promise<Response | null> }[] = [
     { name: 'Nefke Local', try: tryNefkeLocal },
     { name: 'Nefke HF Space', try: tryNefkeHFSpace },
     { name: 'GitHub Models', try: tryGitHub },
+    { name: 'NVIDIA NIM', try: tryNvidia },
     { name: 'Gemini', try: tryGemini },
   ]
 
@@ -322,7 +372,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   return new Response(
-    'No AI provider configured. Set NEFKE_LOCAL_URL (your llama.cpp), NEFKE_HF_SPACE (HF Space), GITHUB_TOKEN (GitHub Models), or GEMINI_API_KEY (Gemini) in Vercel env vars.',
+    'No AI provider configured. Set NEFKE_LOCAL_URL (your llama.cpp), NEFKE_HF_SPACE (HF Space), GITHUB_TOKEN (GitHub Models), NVIDIA_API_KEY (NVIDIA NIM), or GEMINI_API_KEY (Gemini) in Vercel env vars.',
     { status: 500 }
   )
 }

@@ -4,6 +4,8 @@ import { NefkeChat } from './NefkeChat'
 const MIXCLOUD = 'https://www.mixcloud.com/nefke-van-lishout/'
 const RADIO = 'https://www.themusicgalaxyradio.com/'
 const SCHEDULE = 'https://www.themusicgalaxyradio.com/schedule#dataItem-l65jhzsa'
+const YOUTUBE = 'https://www.youtube.com/@nefvanlishout5005'
+const TIKTOK = 'https://www.tiktok.com/@nefkevl'
 
 function App() {
   return (
@@ -168,6 +170,8 @@ function App() {
           </div>
           <div className="footer-links">
             <a href={MIXCLOUD} target="_blank" rel="noreferrer">Mixcloud</a>
+            <a href={YOUTUBE} target="_blank" rel="noreferrer">YouTube</a>
+            <a href={TIKTOK} target="_blank" rel="noreferrer">TikTok</a>
             <a href={RADIO} target="_blank" rel="noreferrer">Radio</a>
             <a href={SCHEDULE} target="_blank" rel="noreferrer">Schedule</a>
           </div>
