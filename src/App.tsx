@@ -127,8 +127,13 @@ function App() {
           <a className="card card-schedule" href={SCHEDULE} target="_blank" rel="noreferrer">
             <div className="card-icon">⏱</div>
             <h3>Show Schedule</h3>
-            <p>Catch DJ NEFKE live on the air. Find broadcast times and upcoming shows.</p>
-            <span className="card-link">View the schedule →</span>
+            <p>Catch DJ NEFKE live on the air.</p>
+            <ul className="schedule-times">
+              <li><strong>Tuesday</strong> — 18:00–20:00 CET</li>
+              <li><strong>Friday</strong> — 18:00–20:00 CET</li>
+              <li><strong>Tuesday</strong> — 17:00 CET / 19:00 CET (guest slot, announced on site)</li>
+            </ul>
+            <span className="card-link">View full schedule →</span>
           </a>
         </div>
       </section>
@@ -142,13 +147,16 @@ function App() {
           Want DJ NEFKE to materialize at your event, festival, warehouse, or
           cosmic gathering? Send a transmission.
         </p>
-        <div className="booking-actions">
-          <a className="btn btn-primary" href="mailto:kiliaanv2@gmail.com?subject=DJ%20NEFKE%20Booking%20Inquiry">
-            ✉ kiliaanv2@gmail.com
-          </a>
-          <a className="btn btn-ghost" href={MIXCLOUD} target="_blank" rel="noreferrer">
-            DM via Mixcloud
-          </a>
+        <div className="booking-contact">
+          <p className="booking-name">Nefke Van Lishout</p>
+          <div className="booking-actions">
+            <a className="btn btn-primary" href="mailto:Nefconsult@gmail.com?subject=DJ%20NEFKE%20Booking%20Inquiry">
+              ✉ Nefconsult@gmail.com
+            </a>
+            <a className="btn btn-ghost" href={MIXCLOUD} target="_blank" rel="noreferrer">
+              DM via Mixcloud
+            </a>
+          </div>
         </div>
       </section>
 

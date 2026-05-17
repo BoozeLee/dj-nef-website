@@ -486,6 +486,42 @@ a { color: inherit; text-decoration: none; }
   flex-wrap: wrap;
 }
 
+.booking-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.booking-name {
+  font-family: 'Bungee', sans-serif;
+  font-size: 22px;
+  color: var(--accent);
+  margin: 0;
+}
+
+/* Radio schedule list */
+.schedule-times {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.schedule-times li {
+  font-size: 14px;
+  color: var(--ink-dim);
+  line-height: 1.5;
+}
+
+.schedule-times strong {
+  color: var(--accent);
+  font-family: 'Bungee', sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+
 /* Footer */
 .footer {
   position: relative;
