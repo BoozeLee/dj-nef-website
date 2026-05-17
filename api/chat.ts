@@ -1,4 +1,3 @@
-/// <reference types="node" />
 // No config export = default Node.js runtime on Vercel.
 // (Edge runtime caused HF Cloudflare 403; Node uses different egress IPs.)
 
