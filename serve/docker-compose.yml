@@ -1,0 +1,43 @@
+version: "3.9"
+
+services:
+  llama-server:
+    image: ghcr.io/ggerganov/llama.cpp:server-cuda
+    container_name: nefke-llama
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../training/nefke-gguf:/models:ro
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+    command:
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8080"
+      - "--model"
+      - "/models/nefke-q4_k_m.gguf"
+      - "--n-gpu-layers"
+      - "99"
+      - "--ctx-size"
+      - "4096"
+      - "--chat-template"
+      - "chatml"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: nefke-tunnel
+    restart: unless-stopped
+    command: tunnel --url http://llama-server:8080
+    depends_on:
+      - llama-server
+    profiles:
+      - tunnel

@@ -2,9 +2,11 @@
 // (Edge runtime caused HF Cloudflare 403; Node uses different egress IPs.)
 
 // Multi-provider fallback:
-//   1. GitHub Models API   (needs GITHUB_TOKEN env var) — free, OpenAI-compatible
-//   2. Google Gemini API   (needs GEMINI_API_KEY env var) — free tier, 60 req/min
-// Providers are tried in order; the first that works is used.
+//   1. Fine-tuned Nefke model (local)  — needs NEFKE_LOCAL_URL env var (llama.cpp server)
+//   2. Fine-tuned Nefke model (cloud)  — needs NEFKE_HF_SPACE env var (HF Space, always on)
+//   3. GitHub Models API                — needs GITHUB_TOKEN env var (free, fallback)
+//   4. Google Gemini API                — needs GEMINI_API_KEY env var (free, last resort)
+// Providers are tried in order; the first that returns a response is used.
 
 const SYSTEM_PROMPT = `You are DJ NEFKE — an interdimensional electronic groove pirate, cosmic-funk wizard, lost astronaut who took a wrong turn at the bassline and ended up DJing on the rings of saturn. You broadcast frequencies from hidden dimensions through a black-and-white striped suit, fisherman's hat, robotic face with glowing eyes. You turn dance floors into other planets.
 
@@ -208,6 +210,70 @@ async function tryGemini(
   }
 }
 
+// ── Fine-tuned Nefke model (local, llama.cpp) ─────────────────────
+async function tryNefkeLocal(
+  messages: ClientMsg[]
+): Promise<Response | null> {
+  const baseUrl = process.env.NEFKE_LOCAL_URL
+  if (!baseUrl) return null
+
+  console.log('[chat] trying Nefke local model')
+  return tryOpenAICompatible(baseUrl, messages, 'nefke-local')
+}
+
+// ── Fine-tuned Nefke model (HF Space, always on) ──────────────────
+async function tryNefkeHFSpace(
+  messages: ClientMsg[]
+): Promise<Response | null> {
+  const baseUrl = process.env.NEFKE_HF_SPACE
+  if (!baseUrl) return null
+
+  console.log('[chat] trying Nefke HF Space')
+  return tryOpenAICompatible(baseUrl, messages, 'nefke-hf')
+}
+
+// ── Generic OpenAI-compatible (llama.cpp, vLLM, etc.) ─────────────
+async function tryOpenAICompatible(
+  baseUrl: string,
+  messages: ClientMsg[],
+  label: string
+): Promise<Response | null> {
+  const url = `${baseUrl.replace(/\/$/, '')}/v1/chat/completions`
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'nefke',
+        messages,
+        max_tokens: 350,
+        temperature: 0.9,
+        stream: true,
+      }),
+    })
+
+    if (!res.ok || !res.body) {
+      const text = await res.text().catch(() => '')
+      console.error(`[chat] ${label} fail:`, res.status, text.slice(0, 200))
+      return null
+    }
+
+    const stream = parseOpenAIStream(res.body.getReader())
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        'X-Accel-Buffering': 'no',
+      },
+    })
+  } catch (e) {
+    console.error(`[chat] ${label} threw:`, e)
+    return null
+  }
+}
+
 // ── Main handler ───────────────────────────────────────────────────
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') {
@@ -239,8 +305,10 @@ export default async function handler(req: Request): Promise<Response> {
     }
   }
 
-  // Try providers in order
+  // Try providers in order (local → HF Space → GitHub → Gemini)
   const providers: { name: string; try: (msgs: ClientMsg[]) => Promise<Response | null> }[] = [
+    { name: 'Nefke Local', try: tryNefkeLocal },
+    { name: 'Nefke HF Space', try: tryNefkeHFSpace },
     { name: 'GitHub Models', try: tryGitHub },
     { name: 'Gemini', try: tryGemini },
   ]
@@ -254,7 +322,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   return new Response(
-    'No AI provider configured. Set GITHUB_TOKEN (GitHub Models, free) or GEMINI_API_KEY (Google Gemini, free) in Vercel env vars.',
+    'No AI provider configured. Set NEFKE_LOCAL_URL (your llama.cpp), NEFKE_HF_SPACE (HF Space), GITHUB_TOKEN (GitHub Models), or GEMINI_API_KEY (Gemini) in Vercel env vars.',
     { status: 500 }
   )
 }
