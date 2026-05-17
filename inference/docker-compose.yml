@@ -1,0 +1,48 @@
+version: "3.9"
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: djnefke-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      - OLLAMA_KEEP_ALIVE=-1
+      - OLLAMA_GPU=1
+
+  api:
+    build: ./api
+    container_name: djnefke-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - OLLAMA_URL=http://ollama:11434
+      - CHAT_MODEL=bartowski/Marco-o1-GGUF:Q4_K_M
+      - FALLBACK_MODEL=Vikhrmodels/Vikhr-Gemma-2B-instruct-GGUF:Q4_K_M
+      - EMBEDDING_MODEL=nomic-embed-text
+      - INTERNAL_CHAT_KEY=${INTERNAL_CHAT_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+    depends_on:
+      - ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+volumes:
+  ollama-data:
