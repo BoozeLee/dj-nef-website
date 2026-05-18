@@ -499,6 +499,117 @@ a { color: inherit; text-decoration: none; }
   margin: 0;
 }
 
+/* Now Spinning bar */
+.now-spinning-bar {
+  position: relative;
+  z-index: 5;
+  max-width: 1200px;
+  margin: 0 auto 20px;
+  padding: 0 6vw;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.nsb-badge {
+  font-family: var(--font-bungee);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--bg-deep);
+  background: var(--green-bright);
+  padding: 5px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+  box-shadow: 0 0 16px rgba(108, 240, 74, 0.5);
+  animation: nsb-glow 2s ease-in-out infinite;
+}
+
+@keyframes nsb-glow {
+  0%, 100% { box-shadow: 0 0 16px rgba(108, 240, 74, 0.5); }
+  50% { box-shadow: 0 0 28px rgba(108, 240, 74, 0.9); }
+}
+
+.nsb-play {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2px solid var(--magenta);
+  background: rgba(30, 168, 255, 0.12);
+  color: var(--magenta);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+  flex-shrink: 0;
+}
+
+.nsb-play:hover {
+  background: rgba(30, 168, 255, 0.25);
+  transform: scale(1.1);
+  box-shadow: 0 0 18px rgba(30, 168, 255, 0.55);
+}
+
+.nsb-play.is-playing {
+  background: rgba(30, 168, 255, 0.2);
+  box-shadow: 0 0 22px rgba(30, 168, 255, 0.7);
+  animation: play-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes play-pulse {
+  0%, 100% { box-shadow: 0 0 22px rgba(30, 168, 255, 0.7); }
+  50% { box-shadow: 0 0 36px rgba(108, 240, 74, 0.7); }
+}
+
+.nsb-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nsb-title {
+  font-family: var(--font-bungee);
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+
+/* Guest alert card */
+.card-guest-alert {
+  border-color: rgba(255, 214, 0, 0.6);
+  background: linear-gradient(135deg, rgba(255, 180, 0, 0.1) 0%, rgba(255, 106, 0, 0.06) 100%);
+  position: relative;
+}
+
+.card-guest-alert:hover {
+  border-color: #ffd600;
+  box-shadow: 0 12px 40px rgba(255, 180, 0, 0.35);
+}
+
+.guest-alert-pill {
+  display: inline-block;
+  font-family: var(--font-bungee);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--bg-deep);
+  background: linear-gradient(90deg, #ffd600 0%, #ff8a00 100%);
+  padding: 4px 12px;
+  border-radius: 999px;
+  margin-bottom: 14px;
+  box-shadow: 0 0 14px rgba(255, 180, 0, 0.5);
+  animation: pill-pulse 2s ease-in-out infinite;
+}
+
+@keyframes pill-pulse {
+  0%, 100% { box-shadow: 0 0 14px rgba(255, 180, 0, 0.5); }
+  50% { box-shadow: 0 0 28px rgba(255, 180, 0, 0.9); }
+}
+
+.card-guest-alert h3 { color: #ffd600; }
+.card-guest-alert .card-link { color: #ffd600; }
+
 /* Radio schedule list */
 .schedule-times {
   list-style: none;
@@ -520,6 +631,15 @@ a { color: inherit; text-decoration: none; }
   font-family: 'Bungee', sans-serif;
   font-size: 13px;
   letter-spacing: 0.04em;
+}
+
+.schedule-guest {
+  color: #ffd600;
+  font-size: 14px;
+}
+
+.schedule-guest strong {
+  color: #ffd600;
 }
 
 /* Footer */

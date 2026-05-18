@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react'
 import heroImg from '/dj-nefke-hero.png'
 import { NefkeChat } from './NefkeChat'
 
@@ -6,6 +7,43 @@ const RADIO = 'https://www.themusicgalaxyradio.com/'
 const SCHEDULE = 'https://www.themusicgalaxyradio.com/schedule#dataItem-l65jhzsa'
 const YOUTUBE = 'https://www.youtube.com/@nefvanlishout5005'
 const TIKTOK = 'https://www.tiktok.com/@nefkevl'
+
+function NowSpinning() {
+  const [playing, setPlaying] = useState(false)
+  const audioRef = useRef<HTMLAudioElement>(null)
+
+  const toggle = () => {
+    if (!audioRef.current) return
+    if (playing) {
+      audioRef.current.pause()
+    } else {
+      audioRef.current.play()
+    }
+    setPlaying(!playing)
+  }
+
+  return (
+    <div className="now-spinning-bar">
+      <span className="nsb-badge">NOW SPINNING</span>
+      <button
+        type="button"
+        className={`nsb-play ${playing ? 'is-playing' : ''}`}
+        onClick={toggle}
+        aria-label={playing ? 'Pause' : 'Play'}
+      >
+        {playing ? '⏸' : '▶'}
+      </button>
+      <div className="nsb-meta">
+        <span className="nsb-title">Flat Pack — Sweet Child O'Mine</span>
+      </div>
+      <audio
+        ref={audioRef}
+        src="/featured-track.mp3"
+        onEnded={() => setPlaying(false)}
+      />
+    </div>
+  )
+}
 
 function App() {
   return (
@@ -61,6 +99,8 @@ function App() {
           </div>
         </div>
       </section>
+
+      <NowSpinning />
 
       <section id="about" className="section about">
         <div className="section-head">
@@ -126,14 +166,26 @@ function App() {
             <p>Home station of the cosmic broadcast. Streaming around the planet.</p>
             <span className="card-link">themusicgalaxyradio.com →</span>
           </a>
+          <div className="card card-guest-alert">
+            <div className="guest-alert-pill">TOMORROW · TUE 19 MAY</div>
+            <div className="card-icon">🌟</div>
+            <h3>Special Guest: DUCH</h3>
+            <p>
+              DUCH joins DJ NEFKE live on Radio Galaxy for a special Tuesday broadcast.
+              Guest sets every Tuesday 17:00–20:00 CET.
+            </p>
+            <a className="card-link" href={RADIO} target="_blank" rel="noreferrer">
+              Tune in on Radio Galaxy →
+            </a>
+          </div>
           <a className="card card-schedule" href={SCHEDULE} target="_blank" rel="noreferrer">
             <div className="card-icon">⏱</div>
             <h3>Show Schedule</h3>
-            <p>Catch DJ NEFKE live on the air.</p>
+            <p>Catch DJ NEFKE live on the air every week.</p>
             <ul className="schedule-times">
               <li><strong>Tuesday</strong> — 18:00–20:00 CET</li>
               <li><strong>Friday</strong> — 18:00–20:00 CET</li>
-              <li><strong>Tuesday</strong> — 17:00 CET / 19:00 CET (guest slot, announced on site)</li>
+              <li className="schedule-guest"><strong>Tuesday guest slot</strong> — 17:00–20:00 CET</li>
             </ul>
             <span className="card-link">View full schedule →</span>
           </a>
