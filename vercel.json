@@ -8,11 +8,5 @@
     "api/chat.ts": {
       "maxDuration": 60
     }
-  },
-  "routes": [
-    {
-      "src": "/api/chat",
-      "dest": "https://api.djnefke.com/chat"
-    }
-  ]
+  }
 }
