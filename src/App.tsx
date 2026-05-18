@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import heroImg from '/dj-nefke-hero.png'
+import featuredTrackSrc from './assets/featured-track.mp3'
 import { NefkeChat } from './NefkeChat'
 
 const MIXCLOUD = 'https://www.mixcloud.com/nefke-van-lishout/'
@@ -38,7 +39,7 @@ function NowSpinning() {
       </div>
       <audio
         ref={audioRef}
-        src="/featured-track.mp3"
+        src={featuredTrackSrc}
         onEnded={() => setPlaying(false)}
       />
     </div>
