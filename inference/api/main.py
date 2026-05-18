@@ -1,19 +1,19 @@
-/// <reference types="node" />
 import json
 import os
 from typing import Any, List, Optional
 
 import httpx
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from supabase import create_client
 
-OLLAMA_URL = os.environ["OLLAMA_URL"].rstrip("/")
-CHAT_MODEL = os.environ["CHAT_MODEL"]
-FALLBACK_MODEL = os.environ["FALLBACK_MODEL"]
-EMBEDDING_MODEL = os.environ["EMBEDDING_MODEL"]
-INTERNAL_CHAT_KEY = os.environ["INTERNAL_CHAT_KEY"]
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434").rstrip("/")
+CHAT_MODEL = os.environ.get("CHAT_MODEL", "baker-orchestrator:latest")
+FALLBACK_MODEL = os.environ.get("FALLBACK_MODEL", "baker-orchestrator:latest")
+EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "nomic-embed-text")
+INTERNAL_CHAT_KEY = os.environ.get("INTERNAL_CHAT_KEY", "secret-key")
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
@@ -23,6 +23,13 @@ if SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY:
     supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 app = FastAPI(title="DJ Nefke Chat Gateway")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class Message(BaseModel):
     role: str
@@ -32,6 +39,7 @@ class ChatRequest(BaseModel):
     messages: List[Message]
     user_id: Optional[str] = None
     chat_id: Optional[str] = None
+    model: Optional[str] = None
 
 DJ_SYSTEM = """You are Super Intelligent DJ Nefke:
 - warm, upbeat, precise, concise
@@ -69,7 +77,7 @@ async def retrieve_context(query: str, k: int = 5) -> str:
     )
 
 async def stream_model(model_name: str, messages: list[dict[str, Any]]):
-    async with httpx.AsyncClient(timeout=None) as client:
+    async with httpx.AsyncClient(timeout=300) as client:
         async with client.stream(
             "POST",
             f"{OLLAMA_URL}/api/chat",
@@ -78,9 +86,7 @@ async def stream_model(model_name: str, messages: list[dict[str, Any]]):
                 "messages": messages,
                 "stream": True,
                 "keep_alive": "15m",
-                "think": False,
             },
-            headers={"Content-Type": "application/json"},
         ) as r:
             r.raise_for_status()
             async for line in r.aiter_lines():
@@ -95,7 +101,7 @@ async def stream_model(model_name: str, messages: list[dict[str, Any]]):
 
 @app.get("/healthz")
 async def healthz():
-    return {"ok": True}
+    return {"ok": True, "models": {"chat": CHAT_MODEL, "fallback": FALLBACK_MODEL, "embedding": EMBEDDING_MODEL}}
 
 @app.post("/chat")
 async def chat(req: ChatRequest, x_api_key: str = Header(default="")):
@@ -113,11 +119,13 @@ async def chat(req: ChatRequest, x_api_key: str = Header(default="")):
         {"role": m.role, "content": m.content} for m in req.messages
     ]
 
+    model = req.model or CHAT_MODEL
+
     async def event_stream():
         try:
-            async for chunk in stream_model(CHAT_MODEL, model_messages):
+            async for chunk in stream_model(model, model_messages):
                 yield chunk
-        except Exception:
+        except Exception as e:
             async for chunk in stream_model(FALLBACK_MODEL, model_messages):
                 yield chunk
 

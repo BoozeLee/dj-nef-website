@@ -24,3 +24,8 @@ dist-ssr
 *.sw?
 .vercel
 .env*.local
+
+# Secrets — never commit
+training/secrets/
+inference/api/__pycache__/
+supabase/.temp/

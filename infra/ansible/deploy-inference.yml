@@ -1,0 +1,127 @@
+---
+- name: Deploy DJ NEFKE Inference Stack
+  hosts: nefke_vps
+  become: true
+  gather_facts: true
+
+  vars:
+    app_dir: "/opt/nefke"
+    docker_compose_file: "{{ app_dir }}/docker-compose.yml"
+    env_file: "{{ app_dir }}/.env"
+    models_dir: "{{ app_dir }}/models"
+    hf_token: "{{ lookup('env', 'HF_TOKEN') }}"
+    supabase_url: "{{ lookup('env', 'SUPABASE_URL') }}"
+    supabase_key: "{{ lookup('env', 'SUPABASE_SERVICE_ROLE_KEY') }}"
+
+  pre_tasks:
+    - name: Ensure app directory exists
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: "1000"
+        group: "1000"
+        mode: "0755"
+
+    - name: Ensure models directory exists
+      file:
+        path: "{{ models_dir }}"
+        state: directory
+        owner: "1000"
+        group: "1000"
+        mode: "0755"
+
+  tasks:
+    - name: Copy inference stack files
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: "1000"
+        group: "1000"
+        mode: "0644"
+      loop:
+        - src: "docker-compose.yml"
+          dest: "{{ app_dir }}/docker-compose.yml"
+
+    - name: Write environment file
+      template:
+        src: "env.j2"
+        dest: "{{ env_file }}"
+        owner: "1000"
+        group: "1000"
+        mode: "0600"
+      vars:
+        internal_chat_key: "{{ lookup('password', '/dev/null chars=hex length=32') }}"
+
+    - name: Generate compose file from template
+      template:
+        src: "docker-compose.j2"
+        dest: "{{ docker_compose_file }}"
+        owner: "1000"
+        group: "1000"
+        mode: "0644"
+
+    - name: Start inference stack
+      command: >
+        docker compose -f {{ docker_compose_file }} up -d
+      args:
+        chdir: "{{ app_dir }}"
+      environment:
+        COMPOSE_PROJECT_NAME: nefke
+
+    - name: Wait for Ollama to be ready
+      uri:
+        url: "http://localhost:11434/api/tags"
+        method: GET
+        status_code: 200
+      register: ollama_health
+      retries: 30
+      delay: 5
+      until: ollama_health.status == 200
+
+    - name: Pull chat model into Ollama
+      command: >
+        docker compose -f {{ docker_compose_file }} exec -T ollama
+        ollama pull {{ chat_model | default('baker-orchestrator:latest') }}
+      args:
+        chdir: "{{ app_dir }}"
+      retries: 3
+      delay: 10
+
+    - name: Pull embedding model into Ollama
+      command: >
+        docker compose -f {{ docker_compose_file }} exec -T ollama
+        ollama pull nomic-embed-text
+      args:
+        chdir: "{{ app_dir }}"
+      retries: 3
+      delay: 10
+
+    - name: Wait for FastAPI to be ready
+      uri:
+        url: "http://localhost:8000/healthz"
+        method: GET
+        status_code: 200
+      register: api_health
+      retries: 20
+      delay: 5
+      until: api_health.status == 200
+
+    - name: Create systemd service for inference stack
+      template:
+        src: "nefke-api.service.j2"
+        dest: "/etc/systemd/system/nefke-api.service"
+        mode: "0644"
+      notify:
+        - Reload systemd
+        - Restart nefke-api
+
+  handlers:
+    - name: Reload systemd
+      command: systemctl daemon-reload
+      changed_when: true
+
+    - name: Restart nefke-api
+      service:
+        name: nefke-api
+        state: restarted
+        enabled: true

@@ -12,7 +12,7 @@
   "routes": [
     {
       "src": "/api/chat",
-      "dest": "https://djnefke-inference.example.com/chat"
+      "dest": "https://api.djnefke.com/chat"
     }
   ]
 }

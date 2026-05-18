@@ -1,0 +1,12 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN pip install --no-cache-dir fastapi uvicorn httpx supabase pydantic python-dotenv tqdm
+
+COPY api/main.py /app/main.py
+COPY build_kb.py /app/build_kb.py
+
+EXPOSE 8000
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
