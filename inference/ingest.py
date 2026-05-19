@@ -53,17 +53,19 @@ async def ingest_file(filepath: Path, metadata: dict = None):
         print(f"Ingested chunk {i+1}/{len(chunks)} from {filepath.name}")
 
 async def main():
-    kb_dir = Path("/home/kilisan/dj-nef-website")
+    repo_root = Path(__file__).resolve().parent.parent
     files = [
-        kb_dir / "about.md",
-        kb_dir / "NGC_SETUP.md",
+        repo_root / "about.md",
+        repo_root / "NGC_SETUP.md",
     ]
-    
+
     for f in files:
         if f.exists():
             print(f"Processing {f.name}...")
             await ingest_file(f, {"type": "knowledge_base"})
-    
+        else:
+            print(f"Skipping {f.name} (not found)")
+
     print("Knowledge base ingestion complete!")
 
 if __name__ == "__main__":

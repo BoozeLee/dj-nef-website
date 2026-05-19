@@ -1,7 +1,17 @@
 FROM ghcr.io/ggerganov/llama.cpp:server
 
-COPY nefke-q4_k_m.gguf /models/nefke-q4_k_m.gguf
+RUN apt-get update && apt-get install -y --no-install-recommends wget ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-EXPOSE 8080
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
 
-CMD ["--host", "0.0.0.0", "--port", "8080", "--model", "/models/nefke-q4_k_m.gguf", "--ctx-size", "4096", "--chat-template", "chatml"]
+RUN mkdir -p /models
+
+# Set via HF Space → Settings → Variables (not a secret — public model repo URL)
+ENV HF_MODEL_URL=""
+ENV MODEL_PATH="/models/nefke.gguf"
+
+EXPOSE 7860
+
+ENTRYPOINT ["/start.sh"]

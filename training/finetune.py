@@ -26,10 +26,9 @@ from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     BitsAndBytesConfig,
-    TrainingArguments,
 )
-from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
-from trl import SFTTrainer
+from peft import LoraConfig, prepare_model_for_kbit_training
+from trl import SFTTrainer, SFTConfig
 
 MODEL_ID = "nvidia/Nemotron-Research-Reasoning-Qwen-1.5B"
 DATASET_PATH = Path(__file__).parent / "nefke_dataset_full.jsonl"
@@ -121,37 +120,36 @@ def train(args):
     train_dataset = split["train"]
     eval_dataset = split["test"]
 
-    training_args = TrainingArguments(
+    training_args = SFTConfig(
         output_dir=str(OUTPUT_DIR),
-        per_device_train_batch_size=4,
-        per_device_eval_batch_size=4,
-        gradient_accumulation_steps=4,
+        per_device_train_batch_size=2,
+        per_device_eval_batch_size=2,
+        gradient_accumulation_steps=8,
         num_train_epochs=3,
         learning_rate=2e-4,
         logging_steps=10,
         save_strategy="epoch",
-        evaluation_strategy="epoch",
+        eval_strategy="epoch",
         save_total_limit=2,
         load_best_model_at_end=True,
         bf16=True,
-        tf32=True,
         optim="adamw_8bit",
         lr_scheduler_type="cosine",
         warmup_ratio=0.03,
         report_to="none",
         remove_unused_columns=False,
-        dataloader_num_workers=2,
+        dataloader_num_workers=0,
+        max_seq_length=512,
+        dataset_text_field="text",
+        packing=False,
     )
 
     trainer = SFTTrainer(
         model=model,
-        tokenizer=tokenizer,
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        max_seq_length=1024,
-        dataset_text_field="text",
-        packing=False,
+        peft_config=lora_config,
     )
 
     print("🏋️  Starting training (GTX 1080 ~2-4 hours)...")
@@ -212,10 +210,25 @@ print("Merge complete!")
     gguf_dir = GGUF_OUTPUT.parent
     os.makedirs(str(gguf_dir), exist_ok=True)
 
+    # Try llama.cpp convert_hf_to_gguf.py (preferred) or older convert.py
+    llamacpp_candidates = [
+        Path.home() / "ollama-bin" / "convert_hf_to_gguf.py",
+        Path("/usr/local/lib/python3.10/dist-packages/llama_cpp/convert_hf_to_gguf.py"),
+    ]
+    convert_script = next((p for p in llamacpp_candidates if p.exists()), None)
+
+    if convert_script is None:
+        # Install llama-cpp-python for its bundled convert script
+        subprocess.run([sys.executable, "-m", "pip", "install", "llama-cpp-python", "--quiet"], check=False)
+        convert_script = Path(subprocess.check_output(
+            [sys.executable, "-c", "import llama_cpp; import pathlib; print(pathlib.Path(llama_cpp.__file__).parent)"],
+            text=True,
+        ).strip()) / "convert_hf_to_gguf.py"
+
     cmd = [
-        sys.executable, "-m", "llama_cpp.convert",
+        sys.executable, str(convert_script),
         "--outtype", "q4_k_m",
-        "--output", str(GGUF_OUTPUT),
+        "--outfile", str(GGUF_OUTPUT),
         str(merge_dir),
     ]
 
@@ -223,9 +236,10 @@ print("Merge complete!")
         subprocess.run(cmd, check=True)
         print(f"✅ GGUF saved to {GGUF_OUTPUT}")
         print(f"   Size: {GGUF_OUTPUT.stat().st_size / 1024 / 1024:.1f} MB")
-    except FileNotFoundError:
-        print("⚠️  llama.cpp convert script not found. Install with: pip install llama-cpp-python")
-        print("   Or manually convert using llama.cpp's convert.py script:")
+    except (FileNotFoundError, subprocess.CalledProcessError) as e:
+        print(f"⚠️  GGUF conversion failed: {e}")
+        print("   Merged model is saved. Convert manually:")
+        print(f"   python convert_hf_to_gguf.py --outtype q4_k_m --outfile {GGUF_OUTPUT} {merge_dir}")
         print(f"   python llama.cpp/convert.py {merge_dir} --outtype q4_k_m --outfile {GGUF_OUTPUT}")
 
 

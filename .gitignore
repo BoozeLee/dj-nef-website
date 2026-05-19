@@ -29,3 +29,10 @@ dist-ssr
 training/secrets/
 inference/api/__pycache__/
 supabase/.temp/
+inference/.env
+
+# Generated artifacts — never commit
+training/.venv/
+training/nefke-lora-adapter/
+training/nefke-gguf/
+*.gguf

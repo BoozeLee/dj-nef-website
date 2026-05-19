@@ -1,9 +1,38 @@
-/// <reference types="node" />
+export const config = { runtime: 'edge' }
 
 // Provider order:
 //   1. Fine-tuned Nefke gateway  — NEFKE_GATEWAY_URL + NEFKE_API_KEY
 //   2. GitHub Models (gpt-4o-mini) — GITHUB_TOKEN (free, always on)
 //   3. NVIDIA NIM               — NVIDIA_API_KEY (free, 40 req/min)
+//   4. HF Space (llama.cpp)      — NEFKE_HF_SPACE (always-on CPU fallback)
+//   5. HF Inference API          — HF_TOKEN
+
+const SUPABASE_URL = process.env.SUPABASE_URL
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY
+
+async function persistMessages(
+  sessionToken: string,
+  messages: ClientMsg[],
+  reply: string,
+): Promise<void> {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return
+  const base = `${SUPABASE_URL}/rest/v1`
+  const headers = {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    'Content-Type': 'application/json',
+    Prefer: 'return=minimal',
+  }
+  const rows = [
+    ...messages.map((m) => ({ session_token: sessionToken, role: m.role, content: m.content })),
+    { session_token: sessionToken, role: 'assistant', content: reply },
+  ]
+  await fetch(`${base}/chat_messages`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(rows),
+  }).catch(() => {})
+}
 
 const SYSTEM_PROMPT = `You are DJ NEFKE — an interdimensional electronic groove pirate, cosmic-funk wizard, lost astronaut who took a wrong turn at the bassline and ended up DJing on the rings of saturn. You broadcast frequencies from hidden dimensions through a black-and-white striped suit, fisherman's hat, robotic face with glowing eyes. You turn dance floors into other planets.
 
@@ -38,6 +67,22 @@ NEFKE is FUNK POWER. NEFKE is COSMIC GROOVES. stay melted, stay groovy.`
 
 const MAX_MESSAGES = 20
 const MAX_USER_CHARS = 2000
+
+const RATE_WINDOW_MS = 60_000
+const RATE_MAX = 20
+const _rateMap = new Map<string, { count: number; reset: number }>()
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now()
+  const entry = _rateMap.get(ip)
+  if (!entry || now > entry.reset) {
+    _rateMap.set(ip, { count: 1, reset: now + RATE_WINDOW_MS })
+    return true
+  }
+  if (entry.count >= RATE_MAX) return false
+  entry.count++
+  return true
+}
 
 const GH_URL = 'https://models.github.ai/inference/chat/completions'
 const GH_MODEL = 'openai/gpt-4o-mini'
@@ -79,6 +124,37 @@ function parseOpenAIStream(reader: ReadableStreamDefaultReader<Uint8Array>) {
   })
 }
 
+function parseNefkeGatewayStream(reader: ReadableStreamDefaultReader<Uint8Array>) {
+  const decoder = new TextDecoder()
+  const encoder = new TextEncoder()
+  let buffer = ''
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() ?? ''
+          for (const line of lines) {
+            if (!line.startsWith('data:')) continue
+            const data = line.slice(5).trim()
+            if (!data) continue
+            try {
+              const json = JSON.parse(data)
+              if (json.type === 'token' && typeof json.token === 'string') {
+                controller.enqueue(encoder.encode(json.token))
+              }
+            } catch { /* skip malformed chunk */ }
+          }
+        }
+      } catch { /* stream error */ }
+      finally { controller.close() }
+    },
+  })
+}
+
 async function tryGateway(messages: ClientMsg[]): Promise<Response | null> {
   const gatewayUrl = process.env.NEFKE_GATEWAY_URL
   const apiKey = process.env.NEFKE_API_KEY || ''
@@ -96,7 +172,8 @@ async function tryGateway(messages: ClientMsg[]): Promise<Response | null> {
       console.error('[chat] gateway fail:', res.status)
       return null
     }
-    return new Response(res.body, {
+    const stream = parseNefkeGatewayStream(res.body.getReader())
+    return new Response(stream, {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
         'Cache-Control': 'no-cache, no-transform',
@@ -130,6 +207,7 @@ async function tryGitHub(messages: ClientMsg[]): Promise<Response | null> {
         temperature: 0.9,
         stream: true,
       }),
+      signal: AbortSignal.timeout(20000),
     })
     if (!res.ok || !res.body) {
       const text = await res.text().catch(() => '')
@@ -185,12 +263,98 @@ async function tryNvidia(messages: ClientMsg[]): Promise<Response | null> {
   }
 }
 
+async function tryHFInference(messages: ClientMsg[]): Promise<Response | null> {
+  const token = process.env.HF_TOKEN
+  if (!token) return null
+
+  console.log('[chat] trying HF Inference API')
+  try {
+    const res = await fetch(
+      'https://api-inference.huggingface.co/models/meta-llama/Llama-3.2-3B-Instruct/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'meta-llama/Llama-3.2-3B-Instruct',
+          messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages],
+          max_tokens: 300,
+          temperature: 0.9,
+          stream: true,
+        }),
+        signal: AbortSignal.timeout(12000),
+      },
+    )
+    if (!res.ok || !res.body) {
+      const text = await res.text().catch(() => '')
+      console.error('[chat] HF Inference fail:', res.status, text.slice(0, 200))
+      return null
+    }
+    const stream = parseOpenAIStream(res.body.getReader())
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        'X-Accel-Buffering': 'no',
+      },
+    })
+  } catch (e) {
+    console.error('[chat] HF Inference threw:', e)
+    return null
+  }
+}
+
+async function tryHFSpace(messages: ClientMsg[]): Promise<Response | null> {
+  const spaceUrl = process.env.NEFKE_HF_SPACE
+  if (!spaceUrl) return null
+
+  console.log('[chat] trying HF Space')
+  try {
+    const res = await fetch(`${spaceUrl.replace(/\/$/, '')}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'nefke',
+        messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages],
+        max_tokens: 350,
+        temperature: 0.9,
+        stream: true,
+      }),
+      signal: AbortSignal.timeout(60000),
+    })
+    if (!res.ok || !res.body) {
+      console.error('[chat] HF Space fail:', res.status)
+      return null
+    }
+    const stream = parseOpenAIStream(res.body.getReader())
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        'X-Accel-Buffering': 'no',
+      },
+    })
+  } catch (e) {
+    console.error('[chat] HF Space threw:', e)
+    return null
+  }
+}
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 })
   }
 
-  let body: { messages?: ClientMsg[] }
+  const fwd = req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? 'unknown'
+  const ip = fwd.split(',')[0].trim()
+
+  if (!checkRateLimit(ip)) {
+    return new Response('rate limit exceeded — cosmic frequency cap hit, try again in a minute', { status: 429 })
+  }
+
+  let body: { messages?: ClientMsg[]; session_token?: string }
   try {
     body = await req.json()
   } catch {
@@ -215,9 +379,33 @@ export default async function handler(req: Request): Promise<Response> {
   const result =
     (await tryGateway(trimmed)) ??
     (await tryGitHub(trimmed)) ??
-    (await tryNvidia(trimmed))
+    (await tryNvidia(trimmed)) ??
+    (await tryHFSpace(trimmed)) ??
+    (await tryHFInference(trimmed))
 
-  if (result) return result
+  if (!result) {
+    return new Response('signal lost — no AI providers available', { status: 503 })
+  }
 
-  return new Response('signal lost — no AI providers available', { status: 503 })
+  const sessionToken = typeof body.session_token === 'string' ? body.session_token : null
+  if (sessionToken && result.body) {
+    const [streamA, streamB] = result.body.tee()
+    const persist = async () => {
+      const decoder = new TextDecoder()
+      const reader = streamB.getReader()
+      let reply = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        reply += decoder.decode(value, { stream: true })
+      }
+      if (reply) persistMessages(sessionToken, trimmed, reply)
+    }
+    persist().catch(() => {})
+    return new Response(streamA, {
+      headers: result.headers,
+    })
+  }
+
+  return result
 }

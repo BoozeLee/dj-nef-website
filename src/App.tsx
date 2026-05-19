@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import heroImg from '/dj-nefke-hero.png'
 import featuredTrackSrc from './assets/featured-track.mp3'
 import { NefkeChat } from './NefkeChat'
@@ -46,7 +46,23 @@ function NowSpinning() {
   )
 }
 
+const NAV_LINKS = [
+  { href: '#about', label: 'Bio' },
+  { href: '#mixes', label: 'Mixes' },
+  { href: '#radio', label: 'Radio' },
+  { href: '#booking', label: 'Booking' },
+]
+
 function App() {
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const close = () => setMenuOpen(false)
+    document.addEventListener('click', close, { once: true })
+    return () => document.removeEventListener('click', close)
+  }, [menuOpen])
+
   return (
     <div className="cosmos">
       <div className="bg-poster" aria-hidden="true" style={{ backgroundImage: `url(${heroImg})` }} />
@@ -59,12 +75,26 @@ function App() {
           <span className="brand-mark">★</span>
           <span>DJ NEFKE</span>
         </div>
-        <nav>
-          <a href="#about">Bio</a>
-          <a href="#mixes">Mixes</a>
-          <a href="#radio">Radio</a>
-          <a href="#booking">Booking</a>
+        <nav className="nav-desktop">
+          {NAV_LINKS.map(({ href, label }) => (
+            <a key={href} href={href}>{label}</a>
+          ))}
         </nav>
+        <button
+          type="button"
+          className={`nav-burger ${menuOpen ? 'is-open' : ''}`}
+          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+          onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v) }}
+        >
+          <span /><span /><span />
+        </button>
+        {menuOpen && (
+          <div className="nav-mobile" onClick={(e) => e.stopPropagation()}>
+            {NAV_LINKS.map(({ href, label }) => (
+              <a key={href} href={href} onClick={() => setMenuOpen(false)}>{label}</a>
+            ))}
+          </div>
+        )}
       </header>
 
       <section className="hero">

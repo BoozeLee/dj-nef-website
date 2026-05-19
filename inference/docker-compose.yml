@@ -1,4 +1,43 @@
 services:
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+      - ../training:/models:ro
+    environment:
+      - OLLAMA_KEEP_ALIVE=15m
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  model-init:
+    image: ollama/ollama:latest
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "until ollama list 2>/dev/null; do sleep 2; done &&
+       if ! ollama list | grep -q nefke-q4_k_m; then
+         ollama create nefke-q4_k_m -f /models/Modelfile &&
+         ollama pull nomic-embed-text;
+       else
+         echo 'model already registered';
+       fi"
+    volumes:
+      - ollama-data:/root/.ollama
+      - ../training:/models:ro
+      - ./Modelfile:/models/Modelfile:ro
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    depends_on:
+      - ollama
+    restart: on-failure
+
   api:
     build:
       context: .
@@ -19,16 +58,18 @@ services:
     volumes:
       - ./build_kb.py:/app/build_kb.py
 
-  ollama:
-    image: ollama/ollama:latest
+  # Exposes the FastAPI gateway via Cloudflare Tunnel.
+  # Quick-tunnel (no token): random URL per restart, good for testing.
+  # Named tunnel (production): set CLOUDFLARE_TUNNEL_TOKEN and use:
+  #   command: tunnel run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+  cloudflared:
+    image: cloudflare/cloudflared:latest
     restart: unless-stopped
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama-data:/var/lib/ollama
-      - ../training:/models:ro
-    environment:
-      - OLLAMA_MODELS=/var/lib/ollama/models
+    command: tunnel --url http://api:8000
+    depends_on:
+      - api
+    profiles:
+      - tunnel
 
   build-kb:
     build:
@@ -43,6 +84,8 @@ services:
       - EMBEDDING_MODEL=nomic-embed-text
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+    profiles:
+      - kb
 
 volumes:
   ollama-data:

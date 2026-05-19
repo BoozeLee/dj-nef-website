@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://djnefke.vercel.app/sitemap.xml

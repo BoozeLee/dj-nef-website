@@ -1,0 +1,17 @@
+{
+  "name": "DJ NEFKE",
+  "short_name": "NEFKE",
+  "description": "Funk is the cosmic connection",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#04000d",
+  "theme_color": "#1a0033",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

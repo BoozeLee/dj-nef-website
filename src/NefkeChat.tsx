@@ -12,6 +12,15 @@ const QUICK_PROMPTS = [
 const HAS_BACKEND =
   typeof window !== 'undefined' && !/github\.io$/.test(window.location.hostname)
 
+function getSessionToken(): string {
+  const KEY = 'nefke_session'
+  const existing = localStorage.getItem(KEY)
+  if (existing) return existing
+  const id = crypto.randomUUID()
+  localStorage.setItem(KEY, id)
+  return id
+}
+
 export function NefkeChat() {
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState('')
@@ -41,12 +50,19 @@ export function NefkeChat() {
     const ctrl = new AbortController()
     abortRef.current = ctrl
 
+    const doFetch = () => fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: nextHistory, session_token: getSessionToken() }),
+      signal: ctrl.signal,
+    })
+
     try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: nextHistory }),
-        signal: ctrl.signal,
+      let res = await doFetch().catch(async (e) => {
+        if ((e as Error).name === 'AbortError') throw e
+        // one retry after 1s for transient network errors
+        await new Promise((r) => setTimeout(r, 1000))
+        return doFetch()
       })
 
       if (!res.ok || !res.body) {
