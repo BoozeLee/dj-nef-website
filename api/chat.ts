@@ -1,5 +1,8 @@
 export const config = { runtime: 'edge' }
 
+// process.env is injected by Vercel into the Edge runtime
+declare const process: { env: Record<string, string | undefined> }
+
 // Provider order:
 //   1. Fine-tuned Nefke gateway  — NEFKE_GATEWAY_URL + NEFKE_API_KEY
 //   2. GitHub Models (gpt-4o-mini) — GITHUB_TOKEN (free, always on)
@@ -207,7 +210,7 @@ async function tryGitHub(messages: ClientMsg[]): Promise<Response | null> {
         temperature: 0.9,
         stream: true,
       }),
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(12000),
     })
     if (!res.ok || !res.body) {
       const text = await res.text().catch(() => '')
@@ -284,7 +287,7 @@ async function tryHFInference(messages: ClientMsg[]): Promise<Response | null> {
           temperature: 0.9,
           stream: true,
         }),
-        signal: AbortSignal.timeout(12000),
+        signal: AbortSignal.timeout(10000),
       },
     )
     if (!res.ok || !res.body) {
@@ -376,12 +379,19 @@ export default async function handler(req: Request): Promise<Response> {
     }
   }
 
-  const result =
+  // Hard 27s ceiling so we always respond before Vercel Edge's 30s limit
+  const deadline = AbortSignal.timeout(27000)
+  const tryAll = async () =>
     (await tryGateway(trimmed)) ??
     (await tryGitHub(trimmed)) ??
     (await tryNvidia(trimmed)) ??
     (await tryHFSpace(trimmed)) ??
     (await tryHFInference(trimmed))
+
+  const result = await Promise.race([
+    tryAll(),
+    new Promise<null>((resolve) => { deadline.addEventListener('abort', () => resolve(null)) }),
+  ])
 
   if (!result) {
     return new Response('signal lost — no AI providers available', { status: 503 })
